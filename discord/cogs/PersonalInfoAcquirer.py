@@ -139,7 +139,7 @@ class PersonalInfoAcquirer(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def list_unregistered_users(self,
                                       ctx: discord.commands.context.ApplicationContext,
-                                      mode: discord.Option(int, "モード", choices=["csv", "mentions"], default="csv")
+                                      mode: discord.Option(str, "モード", choices=["csv", "mentions"], default="csv")
                                       ):
         with get_db() as db:
             participants = participant_crud.get_all(db)
