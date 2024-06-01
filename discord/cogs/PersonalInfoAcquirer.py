@@ -135,6 +135,24 @@ class PersonalInfoAcquirer(commands.Cog):
     async def add_role(self, ctx: discord.commands.context.ApplicationContext):
         await ctx.send_modal(AddRoleModal(title="ロール追加"))
 
+    @slash_command(name="list_unregistered_users", description="未登録ユーザを表示")
+    @commands.has_permissions(administrator=True)
+    async def list_unregistered_users(self, ctx: discord.commands.context.ApplicationContext):
+        with get_db() as db:
+            participants = participant_crud.get_all(db)
+
+        registered_user_ids = [p.discord_account_id for p in participants]
+        unregistered_users = [user for user in ctx.guild.members if user.id not in registered_user_ids]
+
+        csv_data = "DiscordID,discord表示名,discordユーザ名\n"
+        for user in unregistered_users:
+            csv_data += f"{user.id},{user.nick},{user.name}\n"
+
+        with tempfile.TemporaryFile("w", encoding="utf-8") as f:
+            f.write(csv_data)
+            f.seek(0)
+            await ctx.respond(file=discord.File(f.name, filename="unregistered_users.csv"))
+
 
 def setup(bot):
     return bot.add_cog(PersonalInfoAcquirer(bot))
