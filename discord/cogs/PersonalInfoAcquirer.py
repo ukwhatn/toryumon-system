@@ -22,8 +22,8 @@ class PersonalInfoInputModal(discord.ui.Modal):
         univ_name = self.children[1].value
 
         # 正規表現で全ての空白（半角・全角問わず）を除去
-        fullname = re.sub(r"\s 　", "", fullname)
-        univ_name = re.sub(r"\s 　", "", univ_name)
+        fullname = re.sub(r"[\s 　]", "", fullname)
+        univ_name = re.sub(r"[\s 　]", "", univ_name)
 
         with get_db() as db:
             existing_participant = participant_crud.get(db, interaction.user.id)
