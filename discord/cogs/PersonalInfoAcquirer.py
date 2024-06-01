@@ -137,21 +137,30 @@ class PersonalInfoAcquirer(commands.Cog):
 
     @slash_command(name="list_unregistered_users", description="未登録ユーザを表示")
     @commands.has_permissions(administrator=True)
-    async def list_unregistered_users(self, ctx: discord.commands.context.ApplicationContext):
+    async def list_unregistered_users(self,
+                                      ctx: discord.commands.context.ApplicationContext,
+                                      mode: discord.Option(int, "モード", choices=["csv", "mentions"], default="csv")
+                                      ):
         with get_db() as db:
             participants = participant_crud.get_all(db)
 
         registered_user_ids = [p.discord_account_id for p in participants]
         unregistered_users = [user for user in ctx.guild.members if user.id not in registered_user_ids]
 
-        csv_data = "DiscordID,discord表示名,discordユーザ名\n"
-        for user in unregistered_users:
-            csv_data += f"{user.id},{user.nick},{user.name}\n"
+        if mode == "csv":
+            csv_data = "DiscordID,discord表示名,discordユーザ名\n"
+            for user in unregistered_users:
+                csv_data += f"{user.id},{user.nick},{user.name}\n"
 
-        with tempfile.TemporaryFile("w", encoding="utf-8") as f:
-            f.write(csv_data)
-            f.seek(0)
-            await ctx.respond(file=discord.File(f.name, filename="unregistered_users.csv"))
+            with tempfile.TemporaryFile("w", encoding="utf-8") as f:
+                f.write(csv_data)
+                f.seek(0)
+                await ctx.respond(file=discord.File(f.name, filename="unregistered_users.csv"))
+
+        elif mode == "mentions":
+            mentions = [user.mention for user in unregistered_users]
+            msg = " ".join(mentions)
+            await ctx.respond(f"```\n{msg}\n```")
 
 
 def setup(bot):
