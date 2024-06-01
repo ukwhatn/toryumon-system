@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "application-template"
+name = "toryumon-system"
 version = "0.1.0"
-description = "A template for creating a new application"
+description = "Management system for Toryumon Project"
 authors = ["Yuki Watanabe <ukwhatn@gmail.com>"]
 package-mode = false
 

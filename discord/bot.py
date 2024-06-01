@@ -30,5 +30,6 @@ bot = commands.Bot(help_command=None,
 
 bot.load_extension("cogs.Admin")
 bot.load_extension("cogs.CogManager")
+bot.load_extension("cogs.PersonalInfoAcquirer")
 
 bot.run(bot_config.TOKEN)
