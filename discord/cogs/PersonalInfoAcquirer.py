@@ -1,4 +1,5 @@
 import logging
+import re
 import tempfile
 
 import discord
@@ -20,8 +21,19 @@ class PersonalInfoInputModal(discord.ui.Modal):
         fullname = self.children[0].value
         univ_name = self.children[1].value
 
+        # 正規表現で全ての空白（半角・全角問わず）を除去
+        fullname = re.sub(r"\s　", "", fullname)
+        univ_name = re.sub(r"\s　", "", univ_name)
+
         with get_db() as db:
-            participant_crud.create(db, fullname=fullname, univ_name=univ_name, discord_account_id=interaction.user.id)
+            existing_participant = participant_crud.get(db, interaction.user.id)
+
+            if existing_participant is not None:
+                participant_crud.update(db, existing_participant, fullname=fullname, univ_name=univ_name,
+                                        discord_account_id=interaction.user.id)
+            else:
+                participant_crud.create(db, fullname=fullname, univ_name=univ_name,
+                                        discord_account_id=interaction.user.id)
 
         # ephemeralでresponse
         await interaction.response.send_message("参加者情報を登録しました！", ephemeral=True)
@@ -45,6 +57,7 @@ class AddRoleModal(discord.ui.Modal):
         errors = []
 
         for user_id, role_id in csv_data:
+            # user_idとrole_idから余計な空白を削除
             try:
                 user_id = int(user_id.strip())
                 role_id = int(role_id.strip())
