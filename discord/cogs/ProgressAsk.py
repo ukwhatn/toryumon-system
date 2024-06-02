@@ -62,7 +62,7 @@ class ProgressAskUtil:
 
         progress_data: dict[str, dict[str, list[int]]] = {
             role.name: {
-                member.nick if member.nick is not None else member.name: []
+                member.mention: []
                 for member in role.members
             } for role in roles
         }
@@ -85,10 +85,9 @@ class ProgressAskUtil:
                 for role in roles:
                     # ユーザが対象ロールに所属している場合
                     if role in member.roles:
-                        name = member.nick if member.nick is not None else member.name
-                        if name not in progress_data[role.name]:
-                            progress_data[role.name][name] = []
-                        progress_data[role.name][name].append(index)
+                        if member.mention not in progress_data[role.name]:
+                            progress_data[role.name][member.mention] = []
+                        progress_data[role.name][member.mention].append(index)
 
         # indexを昇順にソート
         for role in progress_data:
