@@ -62,6 +62,23 @@ def normalizer_univ_name(univ_name: str) -> str:
     return normalizer_spaces(univ_name)
 
 
+def validates(participant: models.Participant) -> bool:
+    """
+    参加者の情報が正しいかどうかを検証する
+
+    Parameters
+    ----------
+    participant : models.Participant
+        参加者モデル
+
+    Returns
+    -------
+    bool
+        参加者の情報が正しい場合はTrue、正しくない場合はFalse
+    """
+    return participant.fullname != "" and participant.univ_name != ""
+
+
 def get(db: Session, discord_id: int) -> models.Participant | None:
     """
     参加者のDiscord User IDからParticipantモデルを取得する
@@ -103,7 +120,7 @@ def create(
         fullname: str,
         univ_name: str,
         discord_account_id: int
-) -> models.Participant:
+) -> models.Participant | None:
     """
     新しい参加者を作成する
 
@@ -120,15 +137,20 @@ def create(
 
     Returns
     -------
-    models.Participant
+    models.Participant | None
         新しく作成されたParticipantモデル
+        エラーが発生した場合はNone
     """
-    # フルネームと大学名を正規化し、新しいParticipantモデルを作成
+    # 新しいParticipantモデルを作成
     db_participant = models.Participant(
         fullname=normalizer_fullname(fullname),
         univ_name=normalizer_univ_name(univ_name),
         discord_account_id=discord_account_id
     )
+    # バリデーション
+    if not validates(db_participant):
+        return None
+
     db.add(db_participant)
     db.commit()
     db.refresh(db_participant)
@@ -141,7 +163,7 @@ def update(
         fullname: str,
         univ_name: str,
         discord_account_id: int
-) -> models.Participant:
+) -> models.Participant | None:
     """
     参加者の情報を更新する
 
@@ -161,6 +183,11 @@ def update(
     participant.fullname = normalizer_fullname(fullname)
     participant.univ_name = normalizer_univ_name(univ_name)
     participant.discord_account_id = discord_account_id
+
+    # バリデーション
+    if not validates(participant):
+        return None
+
     db.commit()
     db.refresh(participant)
     return participant
@@ -171,7 +198,7 @@ def create_or_update(
         fullname: str,
         univ_name: str,
         discord_account_id: int
-) -> models.Participant:
+) -> models.Participant | None:
     """
     参加者が存在しない場合は新しく作成し、存在する場合は情報を更新する
 
@@ -192,6 +219,7 @@ def create_or_update(
         新しく作成されたParticipantモデル、または更新されたParticipantモデル
     """
     participant = get(db, discord_account_id)
+
     if participant is not None:
         return update(db, participant, fullname, univ_name, discord_account_id)
 
