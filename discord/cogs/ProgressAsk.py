@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 
 import discord
 from discord.commands import slash_command
@@ -67,6 +68,9 @@ class ProgressAskUtil:
             } for role in roles
         }
 
+        guild_members: dict[int, discord.Member] = {member.id: member for member in guild.members if
+                                                    not member.bot}
+
         # リアクション種別ごとにfor文を回す
         for reaction in reactions:
             # リアクションが進捗確認のものでない場合はスキップ
@@ -75,12 +79,15 @@ class ProgressAskUtil:
 
             # リアクションのindexを取得
             index = ProgressAskUtil.get_index(reaction.emoji)
-            # リアクションを付けたユーザを取得してflatten
+
             users = await reaction.users().flatten()
-            members = [await guild.fetch_member(user.id) for user in users if not user.bot]
 
             # ユーザごとにfor文を回す
-            for member in members:
+            for user in users:
+                if user.id not in guild_members:
+                    continue
+
+                member = guild_members[user.id]
                 # 対象ロールごとに回す
                 for role in roles:
                     # ユーザが対象ロールに所属している場合
