@@ -25,7 +25,7 @@ reload:
 	docker compose -f $(COMPOSE_YML) up -d
 
 reset:
-	docker compose -f $(COMPOSE_YML) down --volumes --remove-orphans --rmi all
+	docker compose -f $(COMPOSE_YML) down --volumes --remove-orphans
 
 logs:
 	docker compose -f $(COMPOSE_YML) logs -f
