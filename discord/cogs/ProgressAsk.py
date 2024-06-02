@@ -8,7 +8,7 @@ from discord.ext import commands
 from db.package.crud import progress_ask as progress_ask_crud
 from db.package.session import get_db
 
-INDEXED_REACTIONS = [
+INDEXED_REACTIONS: list[str] = [
     "0️⃣",
     "1️⃣",
     "2️⃣",
@@ -23,9 +23,58 @@ INDEXED_REACTIONS = [
 ]
 
 
+class RateLimit:
+    """
+    レートリミットを管理するクラス
+
+    このクラスは、コマンドの実行回数を制限するために使用されます。
+    """
+    data = {}
+
+    def __init__(self, name: str, limit: int) -> None:
+        self.name = name
+        self.limit = limit
+
+        if name not in RateLimit.data:
+            RateLimit.data[name] = [limit, 0]
+
+    def acquire(self) -> bool:
+        """
+        レートリミットを取得します。
+
+        Returns:
+            bool: レートリミットが取得できた場合はTrue、それ以外はFalse
+        """
+        if RateLimit.data[self.name][1] < RateLimit.data[self.name][0]:
+            RateLimit.data[self.name][1] += 1
+            return True
+        return False
+
+    def release(self) -> None:
+        """
+        レートリミットを解放します。
+        """
+        RateLimit.data[self.name][1] -= 1
+
+
 class ProgressAskUtil:
     @staticmethod
     async def get_or_fetch_guild(bot: discord.Client, guild_id: int) -> discord.Guild | None:
+        """
+        ギルドを取得またはfetchする
+
+        Parameters
+        ----------
+        bot : discord.Client
+            ボット
+        guild_id : int
+            検索対象のギルドID
+
+        Returns
+        -------
+        discord.Guild | None
+            ギルド　取得できない場合はNone
+        """
         guild = bot.get_guild(guild_id)
         if guild is None:
             try:
@@ -35,7 +84,22 @@ class ProgressAskUtil:
         return guild
 
     @staticmethod
-    async def get_or_fetch_channel(guild: discord.Guild, channel_id: int) -> discord.TextChannel | None:
+    async def get_or_fetch_channel(guild: discord.Guild, channel_id: int) -> discord.abc.Messageable | None:
+        """
+        チャンネルを取得またはfetchする
+
+        Parameters
+        ----------
+        guild : discord.Guild
+            ギルド
+        channel_id : int
+            検索対象のチャンネルID
+
+        Returns
+        -------
+        discord.TextChannel | None
+            チャンネル　取得できない場合はNone
+        """
         channel = guild.get_channel(channel_id)
         if channel is None:
             try:
@@ -45,7 +109,22 @@ class ProgressAskUtil:
         return channel
 
     @staticmethod
-    async def get_or_fetch_message(channel: discord.TextChannel, message_id: int) -> discord.Message | None:
+    async def get_or_fetch_message(channel: discord.abc.Messageable, message_id: int) -> discord.Message | None:
+        """
+        メッセージを取得またはfetchする
+
+        Parameters
+        ----------
+        channel : discord.abc.Messageable
+            チャンネル
+        message_id : int
+            検索対象のメッセージID
+
+        Returns
+        -------
+        discord.Message | None
+            メッセージ　取得できない場合はNone
+        """
         try:
             return await channel.fetch_message(message_id)
         except discord.NotFound:
@@ -58,14 +137,37 @@ class ProgressAskUtil:
             reactions: list[discord.Reaction],
             progress_cnt: int
     ) -> discord.Embed:
+        """
+        進捗確認（非公開側）用のEmbedを作成
+
+        Parameters
+        ----------
+        guild : discord.Guild
+            ギルド
+        role_ids : list[int]
+            カテゴライズ対象のロールIDのリスト
+        reactions : list[discord.Reaction]
+            メッセージについたリアクションのリスト
+        progress_cnt : int
+            進捗の数
+
+        Returns
+        -------
+        discord.Embed
+            進捗確認用のEmbed
+        """
         roles: list[discord.Role] = [guild.get_role(role_id) for role_id in role_ids]
 
+        # {ロール名: {メンション: [進捗のindex]}} の形式で進捗データを作成
         progress_data: dict[str, dict[str, list[int]]] = {
             role.name: {
                 member.mention: []
                 for member in role.members
             } for role in roles
         }
+
+        guild_members: dict[int, discord.Member] = {
+            member.id: member for member in guild.members if not member.bot}
 
         # リアクション種別ごとにfor文を回す
         for reaction in reactions:
@@ -75,12 +177,15 @@ class ProgressAskUtil:
 
             # リアクションのindexを取得
             index = ProgressAskUtil.get_index(reaction.emoji)
-            # リアクションを付けたユーザを取得してflatten
+
             users = await reaction.users().flatten()
-            members = [await guild.fetch_member(user.id) for user in users if not user.bot]
 
             # ユーザごとにfor文を回す
-            for member in members:
+            for user in users:
+                if user.id not in guild_members.keys():
+                    continue
+
+                member = guild_members[user.id]
                 # 対象ロールごとに回す
                 for role in roles:
                     # ユーザが対象ロールに所属している場合
@@ -113,19 +218,67 @@ class ProgressAskUtil:
         return embed
 
     @staticmethod
-    def get_reaction(index: int):
+    def get_reaction(index: int) -> str | None:
+        """
+        indexに対応するリアクションを取得
+
+        Parameters
+        ----------
+        index : int
+            リアクションのindex
+
+        Returns
+        -------
+        str | None
+            リアクション ない場合はNone
+        """
+        if index >= len(INDEXED_REACTIONS):
+            return None
         return INDEXED_REACTIONS[index]
 
     @staticmethod
-    def get_index(reaction: str):
+    def get_index(reaction: str) -> int | None:
+        """
+        リアクションに対応するindexを取得
+
+        Parameters
+        ----------
+        reaction : str
+            リアクション
+
+        Returns
+        -------
+        int | None
+            index ない場合はNone
+        """
+        if reaction not in INDEXED_REACTIONS:
+            return None
+
         return INDEXED_REACTIONS.index(reaction)
 
     @staticmethod
-    def is_indexed_reaction(reaction: str):
+    def is_indexed_reaction(reaction: str) -> bool:
+        """
+        リアクションが進捗確認のものか判定
+
+        Parameters
+        ----------
+        reaction : str
+            リアクション
+
+        Returns
+        -------
+        bool
+            進捗確認のリアクションかどうか
+        """
         return reaction in INDEXED_REACTIONS
 
 
 class ProgressAskCreateModal(discord.ui.Modal):
+    """
+    進捗確認の作成用のモーダル
+    """
+
     def __init__(self) -> None:
         super().__init__(title="進捗確認の作成")
         self.add_item(discord.ui.InputText(
@@ -273,6 +426,12 @@ class ProgressAsk(commands.Cog):
         if not ProgressAskUtil.is_indexed_reaction(payload.emoji.name):
             return
 
+        # レートリミットを取得
+        rate_limit = RateLimit("ReactionHandler", 3)
+        if not rate_limit.acquire():
+            self.logger.info("Rate limited: ReactionHandler")
+            return
+
         with get_db() as db:
             progress_ask = progress_ask_crud.get(db, payload.guild_id, payload.message_id)
             if progress_ask is None:
@@ -304,6 +463,8 @@ class ProgressAsk(commands.Cog):
             content="## 【進捗チェック】",
             embeds=summary_embeds
         )
+
+        rate_limit.release()
 
 
 def setup(bot):
