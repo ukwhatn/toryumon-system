@@ -11,24 +11,24 @@ python = "^3.10"
 [tool.poetry.group.discord]
 optional = true
 [tool.poetry.group.discord.dependencies]
-sentry-sdk = "2.7.1"
-py-cord = "2.5.0"
+sentry-sdk = "2.13.0"
+py-cord = "2.6.0"
 
 [tool.poetry.group.dev]
 optional = true
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.1.0"
-mypy = "^1.10.1"
+mypy = "^1.11.1"
 isort = "^5.13.2"
-black = "^24.4.2"
+black = "^24.8.0"
 
 [tool.poetry.group.db]
 optional = true
 [tool.poetry.group.db.dependencies]
 sqlalchemy = "^2.0.31"
-alembic = "^1.13.1"
+alembic = "^1.13.2"
 psycopg2-binary = "^2.9.9"
-pydantic = "^2.7.4"
+pydantic = "^2.8.2"
 
 
 [build-system]
